@@ -1,19 +1,23 @@
 // —————————————————————————————————————————————
-// game.js (with parallax BG + obstacles + Game Over)
+// game.js (with parallax BG + obstacles + Game Over + High Score)
 // —————————————————————————————————————————————
 
-const canvas = document.getElementById('gameCanvas');
-const ctx    = canvas.getContext('2d');
-const scoreEl   = document.getElementById('score');
-const overlay   = document.getElementById('gameOver');
-const retryBtn  = document.getElementById('retryBtn');
+const canvas      = document.getElementById('gameCanvas');
+const ctx         = canvas.getContext('2d');
+const scoreEl     = document.getElementById('score');
+const highscoreEl = document.getElementById('highscore');
+const overlay     = document.getElementById('gameOver');
+const retryBtn    = document.getElementById('retryBtn');
+
+// load stored high score
+let highScore = parseInt(localStorage.getItem('highScore') || '0', 10);
+highscoreEl.textContent = 'High Score: ' + highScore;
 
 let cw, ch;
 function resize() {
   cw = canvas.width  = window.innerWidth;
   ch = canvas.height = window.innerHeight * 0.8;
 
-  // reposition and tile background segments
   bgSegments = [];
   for (let i = 0; i < bgImages.length; i++) {
     bgSegments.push({ img: bgImages[i], x: i * cw });
@@ -21,36 +25,36 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 
-// ——— load background images ———
+// ——— background images ———
 const bgFilenames = ['mt-kilimanjaro.png','speakeasy.png','garden.png'];
-const bgImages = bgFilenames.map(fn => { const img = new Image(); img.src = fn; return img; });
-let bgSegments = [];
+const bgImages    = bgFilenames.map(fn => { const img = new Image(); img.src = fn; return img; });
+let bgSegments    = [];
 
-// ——— load Patti sprite ———
+// ——— player sprite ———
 const sprite = new Image();
 sprite.src   = 'patti-bike-sprite.png';
 
-// ——— load obstacle sprites ———
-const obstacleTypes = ['possum','jar','cat'];
+// ——— obstacle sprites ———
+const obstacleTypes  = ['possum','jar','cat'];
 const obstacleImages = {};
 obstacleTypes.forEach(type => {
   const img = new Image();
-  img.src = `${type}.png`;
+  img.src   = `${type}.png`;
   obstacleImages[type] = img;
 });
 
 // ——— constants & state ———
-const FRAME_COUNT = 4,
-      FRAME_W     = 64,
-      FRAME_H     = 64,
-      ANIM_SPEED  = 8,
-      GRAVITY     = 30,
-      JUMP_FORCE  = 12,
-      MAX_SPEED   = 8,
-      FRICTION    = 0.98,
-      SPAWN_INTERVAL = 1.5,
-      OB_SPEED    = 200,
-      BG_SPEED    = 40;   // slower parallax
+const FRAME_COUNT    = 4,
+      FRAME_W        = 64,
+      FRAME_H        = 64,
+      ANIM_SPEED     = 8,
+      GRAVITY        = 30,
+      JUMP_FORCE     = 12,
+      MAX_SPEED      = 8,
+      FRICTION       = 0.98,
+      SPAWN_INTERVAL= 1.5,
+      OB_SPEED       = 200,
+      BG_SPEED       = 40;
 
 let frameIndex = 0,
     playerX    = 0,
@@ -62,8 +66,7 @@ let frameIndex = 0,
     obstacles  = [],
     spawnTimer = 0,
     lastTime   = 0,
-    gameOver   = false,
-    rafId      = null;
+    gameOver   = false;
 
 // ——— input handlers ———
 function pedal() {
@@ -83,21 +86,21 @@ canvas.addEventListener('touchstart', e => {
 });
 canvas.addEventListener('mousedown', e => {
   const rect = canvas.getBoundingClientRect();
-  const y = e.clientY - rect.top;
+  const y    = e.clientY - rect.top;
   y < ch * 0.5 ? jump() : pedal();
 });
 window.addEventListener('keydown', e => {
   if (e.code === 'Space') jump();
 });
 
-// ——— game-over retry ———
+// ——— retry button ———
 retryBtn.addEventListener('click', () => {
   window.location.reload();
 });
 
-// ——— main update ———
+// ——— update logic ———
 function update(dt) {
-  // background scroll
+  // scroll background
   bgSegments.forEach(b => {
     b.x -= BG_SPEED * dt;
     if (b.x <= -cw) b.x += cw * bgSegments.length;
@@ -132,48 +135,51 @@ function update(dt) {
     });
   }
 
-  // move obstacles & prune
+  // move & remove obstacles
   obstacles.forEach(o => o.x -= OB_SPEED * dt);
   obstacles = obstacles.filter(o => o.x + o.w > 0);
 
-  // collision?
+  // detect collision
   obstacles.forEach(o => {
     const px1 = playerX, px2 = playerX + FRAME_W;
     const py1 = playerY, py2 = playerY + FRAME_H;
-    const ox1 = o.x, ox2 = o.x + o.w;
-    const oy1 = o.y, oy2 = o.y + o.h;
+    const ox1 = o.x,     ox2 = o.x + o.w;
+    const oy1 = o.y,     oy2 = o.y + o.h;
     if (!gameOver && px2 > ox1 && px1 < ox2 && py2 > oy1 && py1 < oy2) {
       gameOver = true;
       overlay.classList.remove('hidden');
     }
   });
 
-  // move & friction
+  // move Patti
   playerX += speed;
   speed   *= FRICTION;
   if (speed < 0.05) speed = 0;
-
-  // wrap-around
   if (playerX > cw) playerX = -FRAME_W;
 
-  // update score
+  // update score & high score
   score += speed * dt;
-  scoreEl.textContent = 'Score: ' + Math.floor(score);
+  scoreEl.textContent     = 'Score: ' + Math.floor(score);
+  if (score > highScore) {
+    highScore = Math.floor(score);
+    highscoreEl.textContent = 'High Score: ' + highScore;
+    localStorage.setItem('highScore', highScore);
+  }
 }
 
-// ——— main draw ———
+// ——— draw logic ———
 function draw() {
-  // BG
+  // draw background
   bgSegments.forEach(b => {
     ctx.drawImage(b.img, 0, 0, b.img.width, b.img.height, b.x, 0, cw, ch);
   });
 
-  // obstacles
+  // draw obstacles
   obstacles.forEach(o => {
     ctx.drawImage(o.img, 0, 0, o.w, o.h, o.x, o.y, o.w, o.h);
   });
 
-  // Patti
+  // draw Patti
   const fx = Math.floor(frameIndex) * FRAME_W;
   ctx.drawImage(
     sprite,
@@ -189,10 +195,10 @@ function loop(now) {
   lastTime = now;
   update(dt);
   draw();
-  if (!gameOver) rafId = requestAnimationFrame(loop);
+  if (!gameOver) requestAnimationFrame(loop);
 }
 
-// ——— start everything once assets load ———
+// ——— start once assets are ready ———
 Promise.all([
   new Promise(r => sprite.onload = r),
   ...bgImages.map(img => new Promise(r => img.onload = r)),

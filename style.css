@@ -1,0 +1,22 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #fce4ec;
+  font-family: sans-serif;
+}
+#gameCanvas {
+  display: block;
+  width: 100vw;
+  height: 80vh;
+  background: #ffc1e3;
+  touch-action: none;
+}
+#score {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  font-size: 1.2rem;
+  color: #333;
+}

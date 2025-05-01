@@ -20,6 +20,13 @@ html, body {
   font-size: 1.2rem;
   color: #333;
 }
+#highscore {
+  position: absolute;
+  top: 36px;
+  left: 12px;
+  font-size: 1.2rem;
+  color: #333;
+}
 
 /* ——— Game Over Overlay ——— */
 #gameOver {
